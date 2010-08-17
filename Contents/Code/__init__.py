@@ -1,7 +1,4 @@
 import re
-from PMS import *
-from PMS.Objects import *
-from PMS.Shortcuts import *
  
 ####################################################################################################
  
@@ -54,7 +51,7 @@ def MainMenu():
   dir.Append(Function(SearchDirectoryItem(Search, title=L('search'), prompt=L('searchprompt'), thumb=R('search.png'))))
  
   if DEBUG_XML_RESPONSE:
-    PMS.Log(dir.Content())
+    Log(dir.Content())
   return dir
  
 def FullEpisodes(sender):
@@ -63,7 +60,7 @@ def FullEpisodes(sender):
   dir.title2 = L('fullepisodes')
  
   seasons = []
-  allSeasons = XML.ElementFromURL(TDS_FULL_EPISODES, isHTML=True)
+  allSeasons = HTML.ElementFromURL(TDS_FULL_EPISODES)
   for season in allSeasons.xpath('//div[@class="seasons"]//a'):
       url = season.get('id')
       seasons.append(url.replace(' ','%20'))
@@ -71,8 +68,8 @@ def FullEpisodes(sender):
   episodeMap = dict()
   for season in seasons:
      
-      episodes = XML.ElementFromURL(season, True).xpath('.//div[@class="moreEpisodesContainer"]')
-      episodes.extend(XML.ElementFromURL(season, True).xpath('.//div[@class="moreEpisodesContainer-selected"]'))
+      episodes = HTML.ElementFromURL(season).xpath('.//div[@class="moreEpisodesContainer"]')
+      episodes.extend(HTML.ElementFromURL(season).xpath('.//div[@class="moreEpisodesContainer-selected"]'))
 
       for episode in episodes:
           title = episode.xpath(".//div[@class='moreEpisodesTitle']/span/a")[0].text
@@ -107,14 +104,14 @@ def CorrespondentBrowser(sender, cacheUpdate=False):
   dir.title1 = L('tds')
   dir.title2 = L('correspondents')
  
-  correspondentsPage = XML.ElementFromURL(TDS_CORRESPONDENTS, isHTML=True, cacheTime=CACHE_CORRESPONDENT_LIST_INTERVAL)
+  correspondentsPage = HTML.ElementFromURL(TDS_CORRESPONDENTS, cacheTime=CACHE_CORRESPONDENT_LIST_INTERVAL)
   correspondents = correspondentsPage.xpath("//div[@class='team-details']/a")
  
   for correspondent in correspondents:
     dir.Append ( GetCorrespondentBio(correspondent, section=L('correspondents')) )
  
   if DEBUG_XML_RESPONSE and not cacheUpdate:
-    PMS.Log(dir.Content())
+    Log(dir.Content())
   return dir
  
 def AlumniBrowser(sender, cacheUpdate=False):
@@ -123,14 +120,14 @@ def AlumniBrowser(sender, cacheUpdate=False):
   dir.title1 = L('tds')
   dir.title2 = L('alumni')
  
-  correspondentsPage = XML.ElementFromURL(TDS_CORRESPONDENTS, isHTML=True, cacheTime=CACHE_CORRESPONDENT_LIST_INTERVAL)
+  correspondentsPage = HTML.ElementFromURL(TDS_CORRESPONDENTS, cacheTime=CACHE_CORRESPONDENT_LIST_INTERVAL)
   correspondents = correspondentsPage.xpath("//div[@class='right']/ul/li/a")
   
   for correspondent in correspondents:
     dir.Append ( GetCorrespondentBio(correspondent, section=L('alumni')) )
  
   if DEBUG_XML_RESPONSE and not cacheUpdate:
-    PMS.Log(dir.Content())
+    Log(dir.Content())
   return dir
  
 def GetCorrespondentBio (correspondent, section):
@@ -146,7 +143,7 @@ def GetCorrespondentBio (correspondent, section):
   thumb = ''
   # Try to fetch their details, gives 404 for some correspondents at the time of writing
   try:
-    info = XML.ElementFromURL(url, isHTML=True, cacheTime=CACHE_CORRESPONDENT_BIO_INTERVAL)
+    info = HTML.ElementFromURL(url, cacheTime=CACHE_CORRESPONDENT_BIO_INTERVAL)
     try:
       for part in info.xpath(".//div[@class='middle']/div[@class='textHolder']/p"):
         description += part.text_content() + '\n\n'
@@ -208,10 +205,10 @@ def ParseSearchResults(sender, title1, title2, url, page=1, order=None):
  
     pageQueryUrl = url + "?sort=" + order + "&page="+str(page)
  
-    results = XML.ElementFromURL(pageQueryUrl, isHTML=True, cacheTime=CACHE_SEARCH_INTERVAL)
-    PMS.Log(pageQueryUrl)
+    results = HTML.ElementFromURL(pageQueryUrl, cacheTime=CACHE_SEARCH_INTERVAL)
+    Log(pageQueryUrl)
     for result in results.xpath('//div[@class="search-results"]/div[@class="entry"]'):
-      PMS.Log(result.xpath(".//span[@class='title']/a"))
+      Log(result.xpath(".//span[@class='title']/a"))
       clipUrl = result.xpath(".//span[@class='title']/a")[0].get("href")
       subtitle = result.xpath('.//div[@class="info_holder"]/div[@class="section"]')[0].text
       title = result.xpath('.//span[@class="title"]/a')[0].text
@@ -234,7 +231,7 @@ def ParseSearchResults(sender, title1, title2, url, page=1, order=None):
  
  
   if DEBUG_XML_RESPONSE:
-    PMS.Log(dir.Content())
+    Log(dir.Content())
   return dir
  
  
