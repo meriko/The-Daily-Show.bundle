@@ -7,12 +7,23 @@ TDS_PREFIX                  = '/video/thedailyshow'
 TDS_URL                     = 'http://www.thedailyshow.com'
 TDS_FULL_EPISODES           = 'http://www.thedailyshow.com/full-episodes/'
 TDS_CORRESPONDENTS          = 'http://www.thedailyshow.com/news-team'
-TDS_SEARCH_GUESTS           = 'http://www.thedailyshow.com/fragments/search/guests-term/%s'
-TDS_SEARCH_CORRESPONDENTS   = 'http://www.thedailyshow.com/fragments/search/tags/%s'
-TDS_SEARCH_ALL_VIDEOS     = 'http://www.thedailyshow.com/fragments/search/type/most-recent'
-TDS_SEARCH_GENERAL          = 'http://www.thedailyshow.com/fragments/search/term/%s'
+
+# All videos
+# http://www.thedailyshow.com/feeds/search?keywords=&tags=&sortOrder=desc&sortBy=views&page=1
+
+# Search guests: sortBy=views = most viewed also sortBy=original_air_date_d
+# http://www.thedailyshow.com/feeds/search?keywords=&tags=interviews&sortOrder=desc&sortBy=views&page=1
+
+# For a correspondent
+#http://www.thedailyshow.com/feeds/search?keywords=&tags=Samantha%20Bee&sortOrder=desc&sortBy=views&page=1
+
+TDS_SEARCH = "http://www.thedailyshow.com/feeds/search?keywords=%s&tags=%s&sortOrder=desc&sortBy=%s&page=%d"
+SORT_AIRED = "original_air_date_d"
+SORT_VIEWED = "views"
+SORT_ORDER_KEY = "sort_order"
+
  
-DEBUG_XML_RESPONSE             = True
+DEBUG_XML_RESPONSE             = False
 CACHE_INTERVAL                       = 1800 # Since we are not pre-fetching content this cache time seems reasonable 
 CACHE_SEARCH_INTERVAL             = 600
 CACHE_CORRESPONDENT_LIST_INTERVAL    = 604800 # 1 Week
@@ -28,7 +39,8 @@ def Start():
   MediaContainer.content = 'Items'
   MediaContainer.art = R('art-default.jpg')
   MediaContainer.viewGroup = 'Details'
-  HTTP.SetCacheTime(CACHE_INTERVAL)
+  Dict[SORT_ORDER_KEY] = SORT_AIRED
+  HTTP.CacheTime = CACHE_INTERVAL
  
 def UpdateCache():
   # The only sections that a slow to load as the Correspondent and Alumni sections
@@ -95,8 +107,7 @@ def FullEpisodes(sender):
   return dir
  
 def GuestBrowser(sender):
-  url = TDS_SEARCH_GUESTS % "''" # Search for ''
-  return ParseSearchResults(None, L('tds'), L('guests'), url)
+  return ParseSearchResults(None, L('tds'), L('guests'), tags='interviews')
  
 def CorrespondentBrowser(sender, cacheUpdate=False):
  
@@ -167,22 +178,27 @@ def GetCorrespondentBio (correspondent, section):
   return item
  
 def CorrespondentSearch(sender, section, name):
- 
-  encodedName = re.sub (r' ', r'+', name)
-  url = TDS_SEARCH_CORRESPONDENTS % encodedName
-  return ParseSearchResults(None, section, name, url=url)
+  return ParseSearchResults(None, section, name, tags=name)
  
 def AllVideosBrowser(sender):
-  return ParseSearchResults(None, L('tds'), L('allvideos'), TDS_SEARCH_ALL_VIDEOS)
+  return ParseSearchResults(None, L('tds'), L('allvideos'))
  
 def Search(sender, query):
-  query = re.sub (r' ', r'+', query)
-  url = TDS_SEARCH_GENERAL % query
-  return ParseSearchResults(None, L('tds'), L('search'), url)
+  return ParseSearchResults(None, L('tds'), L('search'), keywords=query)
  
-def ParseSearchResults(sender, title1, title2, url, page=1, order=None):
+def OrderByDate(sender, key, **kwargs):
+    Dict[SORT_ORDER_KEY] = SORT_AIRED
+     
+def OrderByViews(sender, key, **kwargs):
+    Dict[SORT_ORDER_KEY] = SORT_VIEWED
  
-  dir = MediaContainer()
+def ParseSearchResults(sender, title1, title2, keywords='', tags='', page=1):
+  menu = ContextMenu(includeStandardItems=False)
+  if Dict[SORT_ORDER_KEY] == SORT_AIRED:
+        menu.Append(Function(DirectoryItem(OrderByViews, title='Order by Most Viewed')))
+  elif Dict[SORT_ORDER_KEY] == SORT_VIEWED:
+        menu.Append(Function(DirectoryItem(OrderByDate, title='Order by Aired Date')))
+  dir = MediaContainer(noCache=True, contextMenu=menu)
   if page > 1:
     dir.title1 = title2
     dir.title2 = L('page') + ' ' + str(page)
@@ -190,45 +206,32 @@ def ParseSearchResults(sender, title1, title2, url, page=1, order=None):
     dir.title1 = title1
     dir.title2 = title2
  
-  if order==None:
- 
-    # No sort order currently selected, show options
- 
-    dir.Append(Function(DirectoryItem(ParseSearchResults, title=L('orderby') + ' ' + L('date'), summary='', thumb=R('search.png')), title1=title2, title2=L('date'), url=url, page=page, order='date'))
-    dir.Append(Function(DirectoryItem(ParseSearchResults, title=L('orderby') + ' ' + L('views'), summary='', thumb=R('search.png')), title1=title2, title2=L('views'), url=url, page=page, order='views'))
-    dir.Append(Function(DirectoryItem(ParseSearchResults, title=L('orderby') + ' ' + L('rating'), summary='', thumb=R('search.png')), title1=title2, title2=L('rating'), url=url, page=page, order='rating'))
-    dir.Append(Function(DirectoryItem(ParseSearchResults, title=L('order') + ' ' + L('random'), summary='', thumb=R('search.png')), title1=title2, title2=L('random'), url=url, page=page, order='random'))
- 
-  else:
- 
     # Sort order selected, run the query
  
-    pageQueryUrl = url + "?sort=" + order + "&page="+str(page)
- 
-    results = HTML.ElementFromURL(pageQueryUrl, cacheTime=CACHE_SEARCH_INTERVAL)
-    Log(pageQueryUrl)
-    for result in results.xpath('//div[@class="search-results"]/div[@class="entry"]'):
-      Log(result.xpath(".//span[@class='title']/a"))
+  pageQueryUrl = TDS_SEARCH % (String.Quote(keywords), String.Quote(tags), Dict[SORT_ORDER_KEY], page)
+  Log("Query URL:"+pageQueryUrl)
+  results = HTML.ElementFromURL(pageQueryUrl, cacheTime=CACHE_SEARCH_INTERVAL)
+  for result in results.xpath('//div[@class="search-results"]/div[@class="entry"]'):
+      
       clipUrl = result.xpath(".//span[@class='title']/a")[0].get("href")
       subtitle = result.xpath('.//div[@class="info_holder"]/div[@class="section"]')[0].text
       title = result.xpath('.//span[@class="title"]/a')[0].text
-      # Some results are missing images
+  # Some results are missing images
       try:
-        thumb = result.xpath(".//img")[0].get("src")
-        # Scale up the image a bit
-        thumb = re.sub ( r'width=100', r'width=300', thumb)
+	    thumb = result.xpath(".//img")[0].get("src")
+	# Scale up the image a bit
+	    thumb = re.sub ( r'width=100', r'width=300', thumb)
       except:
-        thumb = ''
+	    thumb = ''
       description = result.xpath('.//span[@class="description"]')[0].text
-      dir.Append(WebVideoItem(clipUrl, title=title, subtitle=subtitle, summary=description, duration='', thumb=thumb))
- 
- 
-    # See if we have a next page link
-    # The last but one page of search results does not have a 'next' button so instead we look for a following numbered page
-    if len (results.xpath("//a[@class='search-page search-page-current']/following-sibling::a[@class='search-page']") ) > 0:
-      page += 1
-      dir.Append(Function(DirectoryItem(ParseSearchResults, title=L('more'), summary='', thumb=R('more.png')), title1=title1, title2=title2, url=url, page=page, order=order))
- 
+      dir.Append(WebVideoItem(clipUrl, title=title, subtitle=subtitle, summary=description, duration='', thumb=thumb, contextKey=title, contextArgs={}))
+
+
+# See if we have a next page link
+# The last but one page of search results does not have a 'next' button so instead we look for a following numbered page
+  if len (results.xpath("//a[@class='search-page search-page-current']/following-sibling::a[@class='search-page']") ) > 0:
+      dir.Append(Function(DirectoryItem(ParseSearchResults, title=L('more'), summary='', thumb=R('more.png')), title1=title1, title2=title2, keywords=keywords, tags=tags, page=page+1))
+
  
   if DEBUG_XML_RESPONSE:
     Log(dir.Content())
