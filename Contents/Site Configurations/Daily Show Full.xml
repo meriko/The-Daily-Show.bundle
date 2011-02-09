@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <site site="http://www.thedailyshow.com/full-episodes/"
-	    plugin="http://media.mtvnservices.com/mgid:cms:fullepisode:thedailyshow.com:.*"
+	    plugin="http://media.mtvnservices.com/.*fullepisode.*"
 			initialState="playing"
 			version="1.0">
 			
