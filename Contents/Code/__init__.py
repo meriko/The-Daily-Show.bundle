@@ -262,8 +262,11 @@ def TidyString(stringToTidy):
 ###################################################################################################
 def SetVolume():
   # Set Flash cookie with volume at max and mute turned off
-  sol = AMF.SOL('media.mtvnservices.com', 'userPrefs4')
-  sol.setdefault(u'userPrefs4', {})
-  sol[u'userPrefs4']['volume'] = 1
-  sol[u'userPrefs4']['isMute'] = False
-  sol.save()
+  try:
+    sol = AMF.SOL('media.mtvnservices.com', 'userPrefs4')
+    sol.setdefault(u'userPrefs4', {})
+    sol[u'userPrefs4']['volume'] = 1
+    sol[u'userPrefs4']['isMute'] = False
+    sol.save()
+  except:
+    Log("Shared Objects folder or Flash cookie 'userPrefs4' does not (yet) exist")
