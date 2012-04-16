@@ -100,7 +100,8 @@ def FullEpisodes(sender):
           # Load larger images
           thumb = thumb.replace("&width=165","&width=495")
 
-          dir.Append(WebVideoItem(url, title=title, summary=description, duration='', thumb=thumb))
+          dir.Append(Function(VideoItem(FindEpisodePlayer, title=title, summary=description, thumb=Function(GetThumb, url=thumb)), url=url))
+
   return dir
 
 ####################################################################################################
@@ -200,12 +201,7 @@ def OrderByViews(sender, key, **kwargs):
 
 ####################################################################################################
 def ParseSearchResults(sender, title1, title2, keywords='', tags='', page=1):
-  menu = ContextMenu(includeStandardItems=False)
-  if Dict[SORT_ORDER_KEY] == SORT_AIRED:
-        menu.Append(Function(DirectoryItem(OrderByViews, title='Order by Most Viewed')))
-  elif Dict[SORT_ORDER_KEY] == SORT_VIEWED:
-        menu.Append(Function(DirectoryItem(OrderByDate, title='Order by Aired Date')))
-  dir = MediaContainer(noCache=True, contextMenu=menu)
+  dir = MediaContainer(noCache=True)
   if page > 1:
     dir.title1 = title2
     dir.title2 = L('page') + ' ' + str(page)
@@ -231,8 +227,7 @@ def ParseSearchResults(sender, title1, title2, keywords='', tags='', page=1):
       except:
 	    thumb = ''
       description = result.xpath('.//span[@class="description"]')[0].text
-      dir.Append(WebVideoItem(clipUrl, title=title, subtitle=subtitle, summary=description, duration='', thumb=thumb, contextKey=title, contextArgs={}))
-
+      dir.Append(Function(VideoItem(FindEpisodePlayer, title=title, subtitle=subtitle, summary=description, thumb=Function(GetThumb, url=thumb)), url=clipUrl))
 
 # See if we have a next page link
 # The last but one page of search results does not have a 'next' button so instead we look for a following numbered page
@@ -259,6 +254,15 @@ def TidyString(stringToTidy):
   else:
     return ''
 
+####################################################################################################
+def GetThumb(url):
+
+  try:
+    data = HTTP.Request(url, cacheTime=CACHE_1MONTH)
+    return DataObject(data, 'image/jpeg')
+  except:
+    return Redirect(R(ICON))
+
 ###################################################################################################
 def SetVolume():
   # Set Flash cookie with volume at max and mute turned off
@@ -270,3 +274,11 @@ def SetVolume():
     sol.save()
   except:
     Log("Shared Objects folder or Flash cookie 'userPrefs4' does not (yet) exist")
+
+###################################################################################################
+def FindEpisodePlayer(sender, url):
+
+  content = HTTP.Request(url).content
+  flashlink = re.search('http://media.mtvnservices.com/(?P<id>.+(episode|video)[^"]+)', content).group('id')
+  flashlink = 'http://media.mtvnservices.com/player/prime/mediaplayerprime.1.12.1.swf?uri=' + flashlink
+  return Redirect(WebVideoItem(flashlink))
