@@ -188,7 +188,7 @@ def AllVideosBrowser(sender):
   return ParseSearchResults(None, L('tds'), L('allvideos'))
 
 ####################################################################################################
-def Search(sender, query):
+def Search(sender, query = 'dog'):
   return ParseSearchResults(None, L('tds'), L('search'), keywords=query)
 
 ####################################################################################################
