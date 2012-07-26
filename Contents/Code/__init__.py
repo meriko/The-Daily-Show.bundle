@@ -100,7 +100,7 @@ def FullEpisodes(sender):
           # Load larger images
           thumb = thumb.replace("&width=165","&width=495")
 
-          dir.Append(Function(VideoItem(FindEpisodePlayer, title=title, summary=description, thumb=Function(GetThumb, url=thumb)), url=url))
+          dir.Append(Function(WebVideoItem(FindEpisodePlayer, title=title, summary=description, thumb=Function(GetThumb, url=thumb)), url=url))
 
   return dir
 
@@ -227,7 +227,7 @@ def ParseSearchResults(sender, title1, title2, keywords='', tags='', page=1):
       except:
 	    thumb = ''
       description = result.xpath('.//span[@class="description"]')[0].text
-      dir.Append(Function(VideoItem(FindEpisodePlayer, title=title, subtitle=subtitle, summary=description, thumb=Function(GetThumb, url=thumb)), url=clipUrl))
+      dir.Append(Function(WebVideoItem(FindEpisodePlayer, title=title, subtitle=subtitle, summary=description, thumb=Function(GetThumb, url=thumb)), url=clipUrl))
 
 # See if we have a next page link
 # The last but one page of search results does not have a 'next' button so instead we look for a following numbered page
