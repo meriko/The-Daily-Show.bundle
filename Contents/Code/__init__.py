@@ -280,5 +280,5 @@ def FindEpisodePlayer(sender, url):
 
   content = HTTP.Request(url).content
   flashlink = re.search('http://media.mtvnservices.com/(?P<id>.+(episode|video)[^"]+)', content).group('id')
-  flashlink = 'http://media.mtvnservices.com/player/prime/mediaplayerprime.1.12.1.swf?uri=' + flashlink
+  flashlink = 'http://media.mtvnservices.com/player/prime/mediaplayerprime.1.12.1.swf?uri=' + flashlink + '&autoPlay=true'
   return Redirect(WebVideoItem(flashlink))
