@@ -1,9 +1,16 @@
-import re
+ParseSearchResults = SharedCodeService.ParseSearchResults.ParseSearchResults
+
+#import re
+RE_BIOGRAPHY = Regex(r'Biography:\n*(.*)', Regex.DOTALL)
+RE_TIDY_STRING = Regex(r'^\s*(\S.*?\S?)\s*$')
 
 TDS_URL            = 'http://www.thedailyshow.com'
 TDS_FULL_EPISODES  = 'http://www.thedailyshow.com/full-episodes/'
 TDS_CORRESPONDENTS = 'http://www.thedailyshow.com/news-team'
 
+
+ICON 	= 'icon-default.jpg'
+ART 	= 'art-default.jpg'
 # All videos
 # http://www.thedailyshow.com/feeds/search?keywords=&tags=&sortOrder=desc&sortBy=views&page=1
 
@@ -26,48 +33,43 @@ CACHE_CORRESPONDENT_BIO_INTERVAL = 7776000 # 3 Months, these pages change very r
 
 ####################################################################################################
 def Start():
-  Plugin.AddPrefixHandler('/video/thedailyshow', MainMenu, L('tds'), 'icon-default.jpg', 'art-default.jpg')
-  Plugin.AddViewGroup('List', viewMode='List', mediaType='items')
-  Plugin.AddViewGroup('Details', viewMode='InfoList', mediaType='items')
+  Plugin.AddPrefixHandler('/video/thedailyshow', MainMenu, L('tds'), ICON, ART)
 
-  MediaContainer.content = 'Items'
-  MediaContainer.art = R('art-default.jpg')
-  MediaContainer.viewGroup = 'Details'
-
+  ObjectContainer.art = R(ART)
+  ObjectContainer.title1=L('tds')
+  DirectoryObject.thumb = R(ICON)
+  
   Dict[SORT_ORDER_KEY] = SORT_AIRED
   HTTP.CacheTime = CACHE_INTERVAL
-  SetVolume()
-
+  
 ####################################################################################################
 def UpdateCache():
   # The only sections that a slow to load as the Correspondent and Alumni sections
   # So pre cache these, with a long cache time for the pages...
-  CorrespondentBrowser(None, cacheUpdate=True)
-  AlumniBrowser(None, cacheUpdate=True)
+  CorrespondentBrowser(cacheUpdate=True)
+  AlumniBrowser(cacheUpdate=True)
 
 ####################################################################################################
 def MainMenu():
-  dir = MediaContainer()
-  dir.title1 = L('tds')
-  dir.viewGroup = 'List'
-
-  dir.Append(Function(DirectoryItem(FullEpisodes, title=L('fullepisodes'), thumb=R('icon-default.jpg'))))
-  dir.Append(Function(DirectoryItem(GuestBrowser, title=L('guests'), thumb=R('icon-default.jpg'))))
-  dir.Append(Function(DirectoryItem(CorrespondentBrowser, title=L('correspondents'), thumb=R('icon-default.jpg'))))
+  oc = ObjectContainer()
+  
+  oc.add(DirectoryObject(key=Callback(FullEpisodes), title=L('fullepisodes')))
+  oc.add(DirectoryObject(key=Callback(GuestBrowser), title=L('guests')))
+  oc.add(DirectoryObject(key=Callback(CorrespondentBrowser), title=L('correspondents')))
+  
   #dir.Append(Function(DirectoryItem(AlumniBrowser, title=L('alumni'), thumb=R('icon-default.jpg'))))
-  dir.Append(Function(DirectoryItem(AllVideosBrowser, title=L('allvideos'), thumb=R('icon-default.jpg'))))
-  dir.Append(Function(SearchDirectoryItem(Search, title=L('search'), prompt=L('searchprompt'), thumb=R('search.png'))))
+  oc.add(DirectoryObject(key=Callback(AllVideosBrowser), title=L('allvideos')))
+  
+  #dir.Append(Function(SearchDirectoryItem(Search, title=L('search'), prompt=L('searchprompt'), thumb=R('search.png'))))
 
   if DEBUG_XML_RESPONSE:
-    Log(dir.Content())
-  return dir
+    Log(oc.Content())
+  return oc
 
 ####################################################################################################
-def FullEpisodes(sender):
-  dir = MediaContainer()
-  dir.title1 = L('tds')
-  dir.title2 = L('fullepisodes')
-
+def FullEpisodes():
+  oc = ObjectContainer(title2=L('fullepisodes'))
+  
   seasons = []
   allSeasons = HTML.ElementFromURL(TDS_FULL_EPISODES)
   for season in allSeasons.xpath('//div[@class="seasons"]//a'):
@@ -83,7 +85,7 @@ def FullEpisodes(sender):
       for episode in episodes:
           title = episode.xpath(".//div[@class='moreEpisodesTitle']/span/a")[0].text
           aired = episode.xpath(".//div[@class='moreEpisodesAirDate']/span")[0].text
-          Log(title+":"+aired)
+          #Log(title+":"+aired)
           date = Datetime.ParseDate(aired.replace('Aired: ','').strip())
           episodeMap[date] = episode
 
@@ -91,7 +93,7 @@ def FullEpisodes(sender):
   sortedEpisodes.sort()
   sortedEpisodes.reverse()
   for episodeKey in sortedEpisodes:
-          Log("Key:"+str(episodeKey))
+          #Log("Key:"+str(episodeKey))
           episode = episodeMap[episodeKey]
           title = episode.xpath(".//div[@class='moreEpisodesTitle']/span/a")[0].text
           description = episode.xpath(".//div[@class='moreEpisodesDescription']/span")[0].text
@@ -100,57 +102,59 @@ def FullEpisodes(sender):
           # Load larger images
           thumb = thumb.replace("&width=165","&width=495")
 
-          dir.Append(Function(WebVideoItem(FindEpisodePlayer, title=title, summary=description, thumb=Function(GetThumb, url=thumb)), url=url))
+          oc.add(EpisodeObject(url=url, title=title, summary=description, thumb=Resource.ContentsOfURLWithFallback(url=thumb, fallback=ICON)))
 
-  return dir
-
-####################################################################################################
-def GuestBrowser(sender):
-  return ParseSearchResults(None, L('tds'), L('guests'), tags='interviews')
+  return oc
 
 ####################################################################################################
-def CorrespondentBrowser(sender, cacheUpdate=False):
+def GuestBrowser():
+  return ParseSearchResults(L('tds'), L('guests'), tags='interviews')
 
-  dir = MediaContainer()
-  dir.title1 = L('tds')
-  dir.title2 = L('correspondents')
-
+####################################################################################################
+def CorrespondentBrowser(cacheUpdate=False):
+  oc = ObjectContainer(title2=L('correspondents'))
+  
   correspondentsPage = HTML.ElementFromURL(TDS_CORRESPONDENTS, cacheTime=CACHE_CORRESPONDENT_LIST_INTERVAL)
   correspondents = correspondentsPage.xpath("//div[@class='team-details']/a")
 
   for correspondent in correspondents:
-    dir.Append ( GetCorrespondentBio(correspondent, section=L('correspondents')) )
-
+    item = GetCorrespondentBio(correspondent, section=L('correspondents'))
+    oc.add(item)
+    #oc.add(DirectoryObject(key=Callback(GetCorrespondentBio, correspondent, section=L('correspondents'))))
+    
   if DEBUG_XML_RESPONSE and not cacheUpdate:
-    Log(dir.Content())
-  return dir
+    Log(oc.Content())
+  return oc
 
 ####################################################################################################
-def AlumniBrowser(sender, cacheUpdate=False):
-
-  dir = MediaContainer()
-  dir.title1 = L('tds')
-  dir.title2 = L('alumni')
+def AlumniBrowser(cacheUpdate=False):
+  oc = ObjectContainer(title2 = L('alumni'))
 
   correspondentsPage = HTML.ElementFromURL(TDS_CORRESPONDENTS, cacheTime=CACHE_CORRESPONDENT_LIST_INTERVAL)
   correspondents = correspondentsPage.xpath("//div[@class='right']/ul/li/a")
 
   for correspondent in correspondents:
-    dir.Append ( GetCorrespondentBio(correspondent, section=L('alumni')) )
+    item = GetCorrespondentBio(correspondent, section=L('alumni'))
+    oc.add(item)
+    #oc.add(DirectoryObject(key=Callback(GetCorrespondentBio, correspondent, section=L('alumni'))))
 
   if DEBUG_XML_RESPONSE and not cacheUpdate:
-    Log(dir.Content())
-  return dir
+    Log(oc.Content())
+  return oc
 
 ####################################################################################################
-def GetCorrespondentBio (correspondent, section):
+def GetCorrespondentBio(correspondent, section):
 
   if len ( correspondent.xpath(".//span") ) > 0:
     name = correspondent.xpath(".//span")[0].text
   else:
     name = TidyString(correspondent.text)
 
-  url = TDS_URL + correspondent.get("href")
+  url = correspondent.get("href")
+  if 'http://' in url:
+    pass
+  else:
+    url = TDS_URL + url
 
   description = ''
   thumb = ''
@@ -165,7 +169,8 @@ def GetCorrespondentBio (correspondent, section):
         description = info.xpath(".//div[@class='middle']/div[@class='textHolder']")[0].text_content()
         # See if the text contains a bio
         try:
-          description = re.search (r'Biography:\n*(.*)', description, re.DOTALL).group(1)
+	  description = RE_BIOGRAPHY.search(description).group(1)
+          #description = re.search (r'Biography:\n*(.*)', description, re.DOTALL).group(1)
         except:
           description = ''
 
@@ -176,109 +181,44 @@ def GetCorrespondentBio (correspondent, section):
     description = ''
     thumb = ''
 
-  item = Function(DirectoryItem(CorrespondentSearch, title=name, summary=description, thumb=thumb), section=section, name=name)
+  #item = Function(DirectoryItem(CorrespondentSearch, title=name, summary=description, thumb=thumb), section=section, name=name)
+  item = DirectoryObject(key=Callback(CorrespondentSearch, section=section, name=name),
+			 title=name, summary=description, thumb=Resource.ContentsOfURLWithFallback(url=thumb, fallback=ICON))
   return item
 
 ####################################################################################################
-def CorrespondentSearch(sender, section, name):
-  return ParseSearchResults(None, section, name, tags=name)
+def CorrespondentSearch(section, name):
+  return ParseSearchResults(section, name, tags=name, page=1)
 
 ####################################################################################################
-def AllVideosBrowser(sender):
-  return ParseSearchResults(None, L('tds'), L('allvideos'))
+def AllVideosBrowser():
+  return ParseSearchResults(L('tds'), L('allvideos'), page=1)
 
 ####################################################################################################
-def Search(sender, query = 'dog'):
-  return ParseSearchResults(None, L('tds'), L('search'), keywords=query)
+def Search(query = 'dog'):
+  return ParseSearchResults(L('tds'), L('search'), query=query, page=1)
 
 ####################################################################################################
-def OrderByDate(sender, key, **kwargs):
-    Dict[SORT_ORDER_KEY] = SORT_AIRED
-
+#def OrderByDate(sender, key, **kwargs):
+#    Dict[SORT_ORDER_KEY] = SORT_AIRED
+#
 ####################################################################################################
-def OrderByViews(sender, key, **kwargs):
-    Dict[SORT_ORDER_KEY] = SORT_VIEWED
-
-####################################################################################################
-def ParseSearchResults(sender, title1, title2, keywords='', tags='', page=1):
-  dir = MediaContainer(noCache=True)
-  if page > 1:
-    dir.title1 = title2
-    dir.title2 = L('page') + ' ' + str(page)
-  else:
-    dir.title1 = title1
-    dir.title2 = title2
-
-    # Sort order selected, run the query
-
-  pageQueryUrl = TDS_SEARCH % (String.Quote(keywords), String.Quote(tags), Dict[SORT_ORDER_KEY], page)
-  Log("Query URL:"+pageQueryUrl)
-  results = HTML.ElementFromURL(pageQueryUrl, cacheTime=CACHE_SEARCH_INTERVAL)
-  for result in results.xpath('//div[@class="search-results"]/div[@class="entry"]'):
-
-      clipUrl = result.xpath(".//span[@class='title']/a")[0].get("href")
-      subtitle = result.xpath('.//div[@class="info_holder"]/div[@class="section"]')[0].text
-      title = result.xpath('.//span[@class="title"]/a')[0].text
-  # Some results are missing images
-      try:
-	    thumb = result.xpath(".//img")[0].get("src")
-	# Scale up the image a bit
-	    thumb = re.sub ( r'width=100', r'width=300', thumb)
-      except:
-	    thumb = ''
-      description = result.xpath('.//span[@class="description"]')[0].text
-      dir.Append(Function(WebVideoItem(FindEpisodePlayer, title=title, subtitle=subtitle, summary=description, thumb=Function(GetThumb, url=thumb)), url=clipUrl))
-
-# See if we have a next page link
-# The last but one page of search results does not have a 'next' button so instead we look for a following numbered page
-  if len (results.xpath("//a[@class='search-page search-page-current']/following-sibling::a[@class='search-page']") ) > 0:
-      dir.Append(Function(DirectoryItem(ParseSearchResults, title=L('more'), summary='', thumb=R('more.png')), title1=title1, title2=title2, keywords=keywords, tags=tags, page=page+1))
-
-
-  if DEBUG_XML_RESPONSE:
-    Log(dir.Content())
-  return dir
-
+#def OrderByViews(key, **kwargs):
+#    Dict[SORT_ORDER_KEY] = SORT_VIEWED
+#
 ####################################################################################################
 def TidyString(stringToTidy):
   # Function to tidy up strings works ok with unicode, 'strip' seems to have issues in some cases so we use a regex
   if stringToTidy:
     # Strip new lines
-    stringToTidy = re.sub(r'\n', r' ', stringToTidy)
+    #stringToTidy = re.sub(r'\n', r' ', stringToTidy)
+    stringToTidy.replace(r'\n', r' ')
     # Strip leading / trailing spaces
-    stringSearch = re.search(r'^\s*(\S.*?\S?)\s*$', stringToTidy)
+    #stringSearch = re.search(r'^\s*(\S.*?\S?)\s*$', stringToTidy)
+    stringSearch = RE_STRING_TIDY.search(stringToTidy)
     if stringSearch == None:
       return ''
     else:
       return stringSearch.group(1)
   else:
     return ''
-
-####################################################################################################
-def GetThumb(url):
-
-  try:
-    data = HTTP.Request(url, cacheTime=CACHE_1MONTH)
-    return DataObject(data, 'image/jpeg')
-  except:
-    return Redirect(R(ICON))
-
-###################################################################################################
-def SetVolume():
-  # Set Flash cookie with volume at max and mute turned off
-  try:
-    sol = AMF.SOL('media.mtvnservices.com', 'userPrefs4')
-    sol.setdefault(u'userPrefs4', {})
-    sol[u'userPrefs4']['volume'] = 1
-    sol[u'userPrefs4']['isMute'] = False
-    sol.save()
-  except:
-    Log("Shared Objects folder or Flash cookie 'userPrefs4' does not (yet) exist")
-
-###################################################################################################
-def FindEpisodePlayer(sender, url):
-
-  content = HTTP.Request(url).content
-  flashlink = re.search('http://media.mtvnservices.com/(?P<id>.+(episode|video)[^"]+)', content).group('id')
-  flashlink = 'http://media.mtvnservices.com/player/prime/mediaplayerprime.1.12.1.swf?uri=' + flashlink + '&autoPlay=true'
-  return Redirect(WebVideoItem(flashlink))
