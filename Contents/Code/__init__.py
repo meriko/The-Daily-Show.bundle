@@ -59,8 +59,7 @@ def MainMenu():
   
   #dir.Append(Function(DirectoryItem(AlumniBrowser, title=L('alumni'), thumb=R('icon-default.jpg'))))
   oc.add(DirectoryObject(key=Callback(AllVideosBrowser), title=L('allvideos')))
-  
-  #dir.Append(Function(SearchDirectoryItem(Search, title=L('search'), prompt=L('searchprompt'), thumb=R('search.png'))))
+  #oc.add(SearchDirectoryObject(identifier="com.plexapp.plugins.thedailyshow", title=L('search'), prompt=L('searchprompt'), thumb=R('search.png')))
 
   if DEBUG_XML_RESPONSE:
     Log(oc.Content())
