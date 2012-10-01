@@ -1,0 +1,49 @@
+TDS_SEARCH = "http://www.thedailyshow.com/feeds/search?keywords=%s&tags=%s&sortOrder=desc&sortBy=%s&page=%d"
+SORT_AIRED = "original_air_date_d"
+SORT_VIEWED = "views"
+SORT_ORDER_KEY = "sort_order"
+CACHE_SEARCH_INTERVAL = 600
+
+def ParseSearchResults(title1='', title2='', query='', tags='', page=None):
+  oc = ObjectContainer(no_cache=True)
+  if page:
+    #includeNext = True
+    if page > 1:
+      oc.title1 = title2
+      oc.title2 = L('page') + ' ' + str(page)
+    else:
+      oc.title1 = title1
+      oc.title2 = title2
+  else:
+    #includeNext = False
+    page = 1
+
+  # Sort order selected, run the query
+
+  #pageQueryUrl = TDS_SEARCH % (String.Quote(query), String.Quote(tags), Dict[SORT_ORDER_KEY], page)
+  pageQueryUrl = TDS_SEARCH % (String.Quote(query), String.Quote(tags), SORT_AIRED, page)
+  results = HTML.ElementFromURL(pageQueryUrl, cacheTime=CACHE_SEARCH_INTERVAL)
+  for result in results.xpath('//div[@class="search-results"]/div[@class="entry"]'):
+
+      clipUrl = result.xpath(".//span[@class='title']/a")[0].get("href")
+      subtitle = result.xpath('.//div[@class="info_holder"]/div[@class="section"]')[0].text
+      title = result.xpath('.//span[@class="title"]/a')[0].text
+  # Some results are missing images
+      try:
+	    thumb = result.xpath(".//img")[0].get("src")
+	# Scale up the image a bit
+	    thumb.replace(r'width=100', r'width=300')
+      except:
+	    thumb = 'http://NO_THUMB.jpg'
+      description = result.xpath('.//span[@class="description"]')[0].text
+      #dir.Append(Function(WebVideoItem(FindEpisodePlayer, title=title, subtitle=subtitle, summary=description, thumb=Function(GetThumb, url=thumb)), url=clipUrl))
+      oc.add(VideoClipObject(url=clipUrl, title=title, summary=description, thumb=Resource.ContentsOfURLWithFallback(url=thumb, fallback='icon-default.jpg'), art=R('art-default.jpg')))
+
+# See if we have a next page link
+# The last but one page of search results does not have a 'next' button so instead we look for a following numbered page
+  
+  #if includeNext and len(results.xpath("//a[@class='search-page search-page-current']/following-sibling::a[@class='search-page']") ) > 0:
+  #    #dir.Append(Function(DirectoryItem(ParseSearchResults, title=L('more'), summary='', thumb=R('more.png')), title1=title1, title2=title2, keywords=keywords, tags=tags, page=page+1))
+  #    oc.add(DirectoryObject(key=Callback(ParseSearchResults, title1=title1, title2=title2, query=query, tags=tags, page=page+1), title=L('more'), thumb=R('more.png'), art=R('art-default.jpg')))
+
+  return oc
