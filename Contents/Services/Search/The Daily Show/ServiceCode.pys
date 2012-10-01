@@ -1,4 +1,4 @@
 from ParseSearchResults import ParseSearchResults
 
 def Search(query):
-    return ParseSearchResults(query=query)
+	return ParseSearchResults(query=query)
