@@ -7,9 +7,6 @@ TDS_FULL_EPISODES = 'http://www.thedailyshow.com/full-episodes'
 TDS_CORRESPONDENTS = 'http://www.thedailyshow.com/news-team'
 TDS_SEARCH = 'http://www.thedailyshow.com/feeds/search?keywords=&tags=%s&sortOrder=desc&sortBy=original_air_date_d&page=%d'
 
-RE_BIOGRAPHY = Regex(r'Biography:\n*(.*)', Regex.DOTALL)
-RE_TIDY_STRING = Regex(r'^\s*(\S.*?\S?)\s*$')
-
 ####################################################################################################
 def Start():
 
