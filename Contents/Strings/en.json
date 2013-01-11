@@ -1,21 +1,9 @@
 {
-	"tds"					: "The Daily Show",
-	"fullepisodes"			: "Full Episodes",
-	"guests"				: "Guest Interviews",
-	"correspondents"		: "Correspondents",
-	"alumni"				: "Correspondent Alumni",
-	"allvideos"				: "All Videos",
-	"search"				: "Search",
-	"searchprompt"			: "Search Term",
-	"more"					: "More...",
-	"page"					: "Page",
-	"sort"					: "Sort",
-	"orderby"				: "Order by",
-	"order"					: "Order",
-	"date"					: "Most Recent",
-	"views"					: "Most Viewed",
-	"rating"				: "Highest Rated",
-	"random"				: "Randomly",
-	"currentsearchorder"	: "The current sort order is",
-	"currentsearchchange"	: "change it to"
+	"fullepisodes": "Full Episodes",
+	"guests": "Guest Interviews",
+	"correspondents": "Correspondents",
+	"allvideos": "All Videos",
+	"search": "Search",
+	"searchprompt": "Search Term",
+	"more": "More..."
 }

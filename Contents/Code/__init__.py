@@ -1,183 +1,174 @@
-ParseSearchResults = SharedCodeService.ParseSearchResults.ParseSearchResults
+NAME = 'The Daily Show'
+ICON = 'icon-default.jpg'
+ART = 'art-default.jpg'
+
+TDS_URL = 'http://www.thedailyshow.com'
+TDS_FULL_EPISODES = 'http://www.thedailyshow.com/full-episodes'
+TDS_CORRESPONDENTS = 'http://www.thedailyshow.com/news-team'
+TDS_SEARCH = 'http://www.thedailyshow.com/feeds/search?keywords=&tags=%s&sortOrder=desc&sortBy=original_air_date_d&page=%d'
 
 RE_BIOGRAPHY = Regex(r'Biography:\n*(.*)', Regex.DOTALL)
 RE_TIDY_STRING = Regex(r'^\s*(\S.*?\S?)\s*$')
 
-TDS_URL = 'http://www.thedailyshow.com'
-TDS_FULL_EPISODES = 'http://www.thedailyshow.com/full-episodes/'
-TDS_CORRESPONDENTS = 'http://www.thedailyshow.com/news-team'
-
-ICON = 'icon-default.jpg'
-ART = 'art-default.jpg'
-
-DEBUG_XML_RESPONSE = False
-CACHE_INTERVAL = 1800 # Since we are not pre-fetching content this cache time seems reasonable
-CACHE_CORRESPONDENT_LIST_INTERVAL = 604800 # 1 Week
-CACHE_CORRESPONDENT_BIO_INTERVAL = 7776000 # 3 Months, these pages change very rarely
-
 ####################################################################################################
 def Start():
 
-  ObjectContainer.art = R(ART)
-  ObjectContainer.title1 = L('tds')
-  DirectoryObject.thumb = R(ICON)
+	ObjectContainer.art = R(ART)
+	ObjectContainer.title1 = NAME
+	DirectoryObject.thumb = R(ICON)
+	NextPageObject.thumb = R(ICON)
+	EpisodeObject.thumb = R(ICON)
+	VideoClipObject.thumb = R(ICON)
 
-  HTTP.CacheTime = CACHE_INTERVAL
-
-####################################################################################################
-def UpdateCache():
-
-  # The only sections that a slow to load as the Correspondent and Alumni sections
-  # So pre cache these, with a long cache time for the pages...
-  CorrespondentBrowser(cacheUpdate=True)
+	HTTP.CacheTime = CACHE_1HOUR
+	HTTP.Headers['User-Agent'] = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10.8; rv:18.0) Gecko/20100101 Firefox/18.0'
 
 ####################################################################################################
-@handler('/video/thedailyshow', L('tds'), art=ART, thumb=ICON)
+@handler('/video/thedailyshow', NAME, art=ART, thumb=ICON)
 def MainMenu():
 
-  oc = ObjectContainer()
+	oc = ObjectContainer()
 
-  oc.add(DirectoryObject(key=Callback(FullEpisodes), title=L('fullepisodes')))
-  oc.add(DirectoryObject(key=Callback(GuestBrowser), title=L('guests')))
-  oc.add(DirectoryObject(key=Callback(CorrespondentBrowser), title=L('correspondents')))
-  oc.add(DirectoryObject(key=Callback(AllVideosBrowser), title=L('allvideos')))
+	oc.add(DirectoryObject(key=Callback(FullEpisodes), title=L('fullepisodes')))
+	oc.add(DirectoryObject(key=Callback(GuestBrowser), title=L('guests')))
+	oc.add(DirectoryObject(key=Callback(CorrespondentBrowser), title=L('correspondents')))
+	oc.add(DirectoryObject(key=Callback(AllVideosBrowser), title=L('allvideos')))
+	oc.add(SearchDirectoryObject(identifier='com.plexapp.plugins.thedailyshow', title=L('search'), prompt=L('searchprompt'), thumb=R('search.png')))
 
-  if DEBUG_XML_RESPONSE:
-    Log(oc.Content())
-
-  return oc
+	return oc
 
 ####################################################################################################
+@route('/video/thedailyshow/fullepisodes')
 def FullEpisodes():
 
-  oc = ObjectContainer(title2=L('fullepisodes'))
+	oc = ObjectContainer(title2=L('fullepisodes'))
+	html = HTML.ElementFromURL(TDS_FULL_EPISODES)
+	video = []
 
-  seasons = []
-  allSeasons = HTML.ElementFromURL(TDS_FULL_EPISODES)
+	for url in html.xpath('//div[@class="seasons"]/a/@id'):
+		for episode in HTML.ElementFromURL(url).xpath('//div[starts-with(@class, "moreEpisodesContainer")]', sleep=0.5):
 
-  for season in allSeasons.xpath('//div[@class="seasons"]//a'):
-    url = season.get('id')
-    seasons.append(url.replace(' ','%20'))
+			if episode.get('id') in video: continue
+			video.append(episode.get('id')) # Prevent duplicates
 
-  episodeMap = dict()
+			url = episode.xpath('.//div[@class="moreEpisodesTitle"]/span/a/@href')[0]
+			title = episode.xpath('.//div[@class="moreEpisodesTitle"]/span/a/text()')[0]
+			summary = episode.xpath('.//div[@class="moreEpisodesDescription"]/span/text()')[0]
+			thumb = episode.xpath('.//div[@class="moreEpisodesImage"]/a/img/@src')[0].split('?')[0]
 
-  for season in seasons:
-    episodes = HTML.ElementFromURL(season).xpath('.//div[@class="moreEpisodesContainer"]')
-    episodes.extend(HTML.ElementFromURL(season).xpath('.//div[@class="moreEpisodesContainer-selected"]'))
+			air_date = episode.xpath('.//div[@class="moreEpisodesAirDate"]/span/text()')[0].replace('Aired: ', '')
+			originally_available_at = Datetime.ParseDate(air_date).date()
 
-    for episode in episodes:
-      title = episode.xpath(".//div[@class='moreEpisodesTitle']/span/a")[0].text
-      aired = episode.xpath(".//div[@class='moreEpisodesAirDate']/span")[0].text
-      date = Datetime.ParseDate(aired.replace('Aired: ','').strip())
-      episodeMap[date] = episode
+			oc.add(EpisodeObject(
+				url = url,
+				title = title,
+				summary = summary,
+				thumb = Resource.ContentsOfURLWithFallback(url=thumb, fallback=ICON),
+				originally_available_at = originally_available_at
+			))
 
-  sortedEpisodes = episodeMap.keys()[:]
-  sortedEpisodes.sort()
-  sortedEpisodes.reverse()
-
-  for episodeKey in sortedEpisodes:
-    #Log("Key:"+str(episodeKey))
-    episode = episodeMap[episodeKey]
-    title = episode.xpath(".//div[@class='moreEpisodesTitle']/span/a")[0].text
-    description = episode.xpath(".//div[@class='moreEpisodesDescription']/span")[0].text
-    url = episode.xpath(".//div[@class='moreEpisodesImage']/a")[0].get("href")
-    thumb = episode.xpath(".//div[@class='moreEpisodesImage']/a/img")[0].get("src")
-    # Load larger images
-    thumb = thumb.replace("&width=165","&width=495")
-
-    oc.add(EpisodeObject(url=url, title=title, summary=description, thumb=Resource.ContentsOfURLWithFallback(url=thumb, fallback=ICON)))
-
-  return oc
+	oc.objects.sort(key=lambda obj: obj.originally_available_at, reverse=True)
+	return oc
 
 ####################################################################################################
+@route('/video/thedailyshow/guests')
 def GuestBrowser():
-  return ParseSearchResults(L('tds'), L('guests'), tags='interviews')
+
+	return ParseSearchResults(title2=L('guests'), tags='interviews')
 
 ####################################################################################################
-def CorrespondentBrowser(cacheUpdate=False):
+@route('/video/thedailyshow/correspondents')
+def CorrespondentBrowser():
 
-  oc = ObjectContainer(title2=L('correspondents'))
+	oc = ObjectContainer(title2=L('correspondents'))
 
-  correspondentsPage = HTML.ElementFromURL(TDS_CORRESPONDENTS, cacheTime=CACHE_CORRESPONDENT_LIST_INTERVAL)
-  correspondents = correspondentsPage.xpath("//div[@class='team-details']/a")
+	for correspondent in HTML.ElementFromURL(TDS_CORRESPONDENTS).xpath('//div[@class="team-details"]/a'):
+		item = GetCorrespondentBio(correspondent)
+		oc.add(item)
 
-  for correspondent in correspondents:
-    item = GetCorrespondentBio(correspondent, section=L('correspondents'))
-    oc.add(item)
-    #oc.add(DirectoryObject(key=Callback(GetCorrespondentBio, correspondent, section=L('correspondents'))))
-
-  if DEBUG_XML_RESPONSE and not cacheUpdate:
-    Log(oc.Content())
-
-  return oc
+	return oc
 
 ####################################################################################################
-def GetCorrespondentBio(correspondent, section):
+def GetCorrespondentBio(correspondent):
 
-  if len ( correspondent.xpath(".//span") ) > 0:
-    name = correspondent.xpath(".//span")[0].text
-  else:
-    name = TidyString(correspondent.text)
+	name = correspondent.xpath('./span/text()')[0].replace('_', ' ')
+	url = correspondent.get('href')
 
-  url = correspondent.get("href")
-  if 'http://' in url:
-    pass
-  else:
-    url = TDS_URL + url
+	if not url.startswith('http://'):
+		url = TDS_URL + url
 
-  description = ''
-  thumb = ''
+	summary = ''
+	thumb = ''
 
-  # Try to fetch their details, gives 404 for some correspondents at the time of writing
-  try:
-    info = HTML.ElementFromURL(url, cacheTime=CACHE_CORRESPONDENT_BIO_INTERVAL)
-    try:
-      for part in info.xpath(".//div[@class='middle']/div[@class='textHolder']/p"):
-        description += part.text_content() + '\n\n'
-      # If we didn't find the bio (Samantha Bee I'm looking at you) try a different path
-      if description == '':
-        description = info.xpath(".//div[@class='middle']/div[@class='textHolder']")[0].text_content()
-        # See if the text contains a bio
-        try:
-	  description = RE_BIOGRAPHY.search(description).group(1)
-          #description = re.search (r'Biography:\n*(.*)', description, re.DOTALL).group(1)
-        except:
-          description = ''
+	# Try to fetch their details
+	try:
+		info = HTML.ElementFromURL(url, cacheTime=CACHE_1MONTH)
+		biography = info.xpath('//div[@class="textHolder"]')[0].text_content()
+		summary = biography.split('Biography:',1)[1].strip()
 
-    except:  # Some don't have bios...
-      description = ''
-    thumb = info.xpath('.//div[@class="middle"]/div[@class="imageHolder"]/img')[0].get("src")
-  except:
-    description = ''
-    thumb = ''
+		thumb = info.xpath('//div[@class="middle"]/div[@class="imageHolder"]/img/@src')[0].split('?')[0]
+	except:
+		pass
 
-  item = DirectoryObject(key=Callback(CorrespondentSearch, section=section, name=name),
-         title=name, summary=description, thumb=Resource.ContentsOfURLWithFallback(url=thumb, fallback=ICON))
-
-  return item
+	return DirectoryObject(
+		key = Callback(CorrespondentSearch, name=name),
+		title = name,
+		summary = summary,
+		thumb = Resource.ContentsOfURLWithFallback(url=thumb, fallback=ICON)
+	)
 
 ####################################################################################################
-def CorrespondentSearch(section, name):
-  return ParseSearchResults(section, name, tags=name, page=1)
+@route('/video/thedailyshow/video/correspondents')
+def CorrespondentSearch(name):
+
+	return ParseSearchResults(title2=name, tags=name)
 
 ####################################################################################################
+@route('/video/thedailyshow/video/all')
 def AllVideosBrowser():
-  return ParseSearchResults(L('tds'), L('allvideos'), page=1)
+
+	return ParseSearchResults(title2=L('allvideos'))
 
 ####################################################################################################
-def TidyString(stringToTidy):
+@route('/video/thedailyshow/search', page=int)
+def ParseSearchResults(title2='', tags='', page=1):
 
-  # Function to tidy up strings works ok with unicode, 'strip' seems to have issues in some cases so we use a regex
-  if stringToTidy:
-    # Remove new lines
-    stringToTidy.replace('\n', ' ')
+	oc = ObjectContainer(title2=title2)
+	url = TDS_SEARCH % (String.Quote(tags), page)
+	html = HTML.ElementFromURL(url, cacheTime=CACHE_1HOUR)
 
-    # Strip leading / trailing spaces
-    stringSearch = RE_STRING_TIDY.search(stringToTidy)
+	for result in html.xpath('//div[@class="search-results"]/div[@class="entry"]'):
+		url = result.xpath('.//span[@class="title"]/a/@href')[0]
+		title = result.xpath('.//span[@class="title"]/a/text()')[0]
+		summary = result.xpath('.//span[@class="description"]/text()')[0]
 
-    if stringSearch == None:
-      return ''
-    else:
-      return stringSearch.group(1)
-  else:
-    return ''
+		try:
+			thumb = result.xpath('.//img/@src')[0].split('?')[0]
+			thumb = '%s?width=640' % thumb
+		except:
+			thumb = ''
+
+		air_date = result.xpath('.//div[@class="info_holder"]//span[contains(., "Aired:")]/following-sibling::text()')[0]
+		originally_available_at = Datetime.ParseDate(air_date).date()
+
+		if summary[-7:-6] == '(':
+			(summary, duration) = summary.rsplit(' (', 1)
+			duration = Datetime.MillisecondsFromString(duration.strip(')'))
+
+		oc.add(VideoClipObject(
+			url = url,
+			title = title,
+			summary = summary,
+			duration = duration,
+			thumb = Resource.ContentsOfURLWithFallback(url=thumb, fallback=ICON),
+			originally_available_at = originally_available_at
+		))
+
+	# Add a NextPageObject if we're not coming from a Search Service
+	if len(html.xpath('//a[@class="search-next"]')) > 0:
+		oc.add(NextPageObject(
+			key = Callback(ParseSearchResults, title2=title2, tags=tags, page=page+1),
+			title = L('more')
+		))
+
+	return oc
