@@ -43,7 +43,11 @@ def FullEpisodes():
 	video = []
 
 	for url in html.xpath('//div[@class="seasons"]/a/@id'):
-		for episode in HTML.ElementFromURL(url).xpath('//div[starts-with(@class, "moreEpisodesContainer")]', sleep=0.5):
+		cache_time = CACHE_1MONTH
+		if '/0/' in url:
+			cache_time = CACHE_1HOUR
+
+		for episode in HTML.ElementFromURL(url, cacheTime=cache_time).xpath('//div[starts-with(@class, "moreEpisodesContainer")]', sleep=0.5):
 
 			if episode.get('id') in video: continue
 			video.append(episode.get('id')) # Prevent duplicates
