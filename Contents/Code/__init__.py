@@ -1,5 +1,5 @@
 NAME = 'The Daily Show'
-ICON = 'icon-default.jpg'
+ICON = 'icon-default.png'
 ART = 'art-default.jpg'
 
 TDS_URL = 'http://www.thedailyshow.com'
