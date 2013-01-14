@@ -161,7 +161,6 @@ def ParseSearchResults(title2='', tags='', page=1):
 			originally_available_at = originally_available_at
 		))
 
-	# Add a NextPageObject if we're not coming from a Search Service
 	if len(html.xpath('//a[@class="search-next"]')) > 0:
 		oc.add(NextPageObject(
 			key = Callback(ParseSearchResults, title2=title2, tags=tags, page=page+1),
