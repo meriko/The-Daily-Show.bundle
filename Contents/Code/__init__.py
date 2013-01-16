@@ -5,7 +5,7 @@ ART = 'art-default.jpg'
 TDS_URL = 'http://www.thedailyshow.com'
 TDS_FULL_EPISODES = 'http://www.thedailyshow.com/full-episodes'
 TDS_CORRESPONDENTS = 'http://www.thedailyshow.com/news-team'
-TDS_SEARCH = 'http://www.thedailyshow.com/feeds/search?keywords=&tags=%s&sortOrder=desc&sortBy=original_air_date_d&page=%d'
+TDS_SEARCH = 'http://www.thedailyshow.com/feeds/search?keywords=&tags=%s&sortOrder=desc&sortBy=date&page=%d'
 
 ####################################################################################################
 def Start():

@@ -1,4 +1,4 @@
-TDS_SEARCH = 'http://www.thedailyshow.com/feeds/search?keywords=%s&tags=&sortOrder=desc&sortBy=original_air_date_d&page=1'
+TDS_SEARCH = 'http://www.thedailyshow.com/feeds/search?keywords=%s&tags=&sortOrder=desc&sortBy=date&page=1'
 
 ####################################################################################################
 def Search(query):
