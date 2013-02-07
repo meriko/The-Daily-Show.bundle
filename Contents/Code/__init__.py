@@ -27,15 +27,15 @@ def MainMenu():
 	oc = ObjectContainer()
 
 	oc.add(DirectoryObject(key=Callback(FullEpisodes), title=L('fullepisodes')))
-	oc.add(DirectoryObject(key=Callback(GuestBrowser), title=L('guests')))
+	oc.add(DirectoryObject(key=Callback(ParseSearchResults, title2=L('guests'), tags='interviews'), title=L('guests')))
 	oc.add(DirectoryObject(key=Callback(CorrespondentBrowser), title=L('correspondents')))
-	oc.add(DirectoryObject(key=Callback(AllVideosBrowser), title=L('allvideos')))
+	oc.add(DirectoryObject(key=Callback(ParseSearchResults, title2=L('allvideos')), title=L('allvideos')))
 	oc.add(SearchDirectoryObject(identifier='com.plexapp.plugins.thedailyshow', title=L('search'), prompt=L('searchprompt'), thumb=R('search.png')))
 
 	return oc
 
 ####################################################################################################
-@route('/video/thedailyshow/fullepisodes')
+@route('/video/thedailyshow/fullepisodes', allow_sync=True)
 def FullEpisodes():
 
 	oc = ObjectContainer(title2=L('fullepisodes'))
@@ -66,12 +66,6 @@ def FullEpisodes():
 
 	oc.objects.sort(key=lambda obj: obj.originally_available_at, reverse=True)
 	return oc
-
-####################################################################################################
-@route('/video/thedailyshow/guests')
-def GuestBrowser():
-
-	return ParseSearchResults(title2=L('guests'), tags='interviews')
 
 ####################################################################################################
 @route('/video/thedailyshow/correspondents')
@@ -108,26 +102,14 @@ def GetCorrespondentBio(correspondent):
 		pass
 
 	return DirectoryObject(
-		key = Callback(CorrespondentSearch, name=name),
+		key = Callback(ParseSearchResults, title2=name, tags=name),
 		title = name,
 		summary = summary,
 		thumb = Resource.ContentsOfURLWithFallback(url=thumb, fallback=ICON)
 	)
 
 ####################################################################################################
-@route('/video/thedailyshow/video/correspondents')
-def CorrespondentSearch(name):
-
-	return ParseSearchResults(title2=name, tags=name)
-
-####################################################################################################
-@route('/video/thedailyshow/video/all')
-def AllVideosBrowser():
-
-	return ParseSearchResults(title2=L('allvideos'))
-
-####################################################################################################
-@route('/video/thedailyshow/search', page=int)
+@route('/video/thedailyshow/search', page=int, allow_sync=True)
 def ParseSearchResults(title2, tags=None, page=1):
 
 	oc = ObjectContainer(title2=title2)
