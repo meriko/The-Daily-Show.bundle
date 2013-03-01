@@ -30,7 +30,7 @@ def Search(query):
 			title = title,
 			summary = summary,
 			duration = duration,
-			thumb = Resource.ContentsOfURLWithFallback(url=thumb, fallback='icon-default.png'),
+			thumb = Resource.ContentsOfURLWithFallback(url=thumb),
 			originally_available_at = originally_available_at
 		))
 

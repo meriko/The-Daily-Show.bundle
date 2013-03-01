@@ -1,7 +1,4 @@
 NAME = 'The Daily Show'
-ICON = 'icon-default.png'
-ART = 'art-default.jpg'
-
 TDS_URL = 'http://www.thedailyshow.com'
 TDS_FULL_EPISODES = 'http://www.thedailyshow.com/full-episodes'
 TDS_CORRESPONDENTS = 'http://www.thedailyshow.com/news-team'
@@ -10,18 +7,12 @@ TDS_SEARCH = 'http://www.thedailyshow.com/feeds/search?keywords=&tags=%s&sortOrd
 ####################################################################################################
 def Start():
 
-	ObjectContainer.art = R(ART)
 	ObjectContainer.title1 = NAME
-	DirectoryObject.thumb = R(ICON)
-	NextPageObject.thumb = R(ICON)
-	EpisodeObject.thumb = R(ICON)
-	VideoClipObject.thumb = R(ICON)
-
 	HTTP.CacheTime = CACHE_1HOUR
 	HTTP.Headers['User-Agent'] = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10.8; rv:18.0) Gecko/20100101 Firefox/18.0'
 
 ####################################################################################################
-@handler('/video/thedailyshow', NAME, art=ART, thumb=ICON)
+@handler('/video/thedailyshow', NAME)
 def MainMenu():
 
 	oc = ObjectContainer()
@@ -30,7 +21,7 @@ def MainMenu():
 	oc.add(DirectoryObject(key=Callback(ParseSearchResults, title2=L('guests'), tags='interviews'), title=L('guests')))
 	oc.add(DirectoryObject(key=Callback(CorrespondentBrowser), title=L('correspondents')))
 	oc.add(DirectoryObject(key=Callback(ParseSearchResults, title2=L('allvideos')), title=L('allvideos')))
-	oc.add(SearchDirectoryObject(identifier='com.plexapp.plugins.thedailyshow', title=L('search'), prompt=L('searchprompt'), thumb=R('search.png')))
+	oc.add(SearchDirectoryObject(identifier='com.plexapp.plugins.thedailyshow', title=L('search'), prompt=L('searchprompt')))
 
 	return oc
 
@@ -60,7 +51,7 @@ def FullEpisodes():
 				url = url,
 				title = title,
 				summary = summary,
-				thumb = Resource.ContentsOfURLWithFallback(url=thumb, fallback=ICON),
+				thumb = Resource.ContentsOfURLWithFallback(url=thumb),
 				originally_available_at = originally_available_at
 			))
 
@@ -105,7 +96,7 @@ def GetCorrespondentBio(correspondent):
 		key = Callback(ParseSearchResults, title2=name, tags=name),
 		title = name,
 		summary = summary,
-		thumb = Resource.ContentsOfURLWithFallback(url=thumb, fallback=ICON)
+		thumb = Resource.ContentsOfURLWithFallback(url=thumb)
 	)
 
 ####################################################################################################
@@ -140,7 +131,7 @@ def ParseSearchResults(title2, tags=None, page=1):
 			title = title,
 			summary = summary,
 			duration = duration,
-			thumb = Resource.ContentsOfURLWithFallback(url=thumb, fallback=ICON),
+			thumb = Resource.ContentsOfURLWithFallback(url=thumb),
 			originally_available_at = originally_available_at
 		))
 
