@@ -31,31 +31,35 @@ def FullEpisodes():
 
 	oc = ObjectContainer(title2=L('fullepisodes'))
 	html = HTML.ElementFromURL(TDS_FULL_EPISODES)
-	video = []
 
-	for url in html.xpath('//div[@class="seasons"]/a/@id'):
-		for episode in HTML.ElementFromURL(url).xpath('//div[starts-with(@class, "moreEpisodesContainer")]', sleep=0.5):
+	for episode in html.xpath('//ul[@class="more_episode_list"]/li'):
+		url = episode.xpath('./a/@href')[0]
+		guest = episode.xpath('.//span[@class="guest"]/text()')[0].strip(' -')
 
-			if episode.get('id') in video: continue
-			video.append(episode.get('id')) # Prevent duplicates
+		airdate = episode.xpath('.//span[contains(@class, "air_date")]/text()')[0].replace('  ', ' ').strip()
+		if airdate.lower() == 'special edition':
+			title = 'Special Edition - %s' % guest
+		else:
+			title = '%s - %s' % (airdate, guest)
 
-			url = episode.xpath('.//div[@class="moreEpisodesTitle"]/span/a/@href')[0]
-			title = episode.xpath('.//div[@class="moreEpisodesTitle"]/span/a/text()')[0]
-			summary = episode.xpath('.//div[@class="moreEpisodesDescription"]/span/text()')[0]
-			thumb = episode.xpath('.//div[@class="moreEpisodesImage"]/a/img/@src')[0].split('?')[0]
+		summary = episode.xpath('.//span[@class="details"]/span/text()')[0].strip()
+		thumb = '%s?width=640&height=360' % episode.xpath('.//img/@src')[0].split('?')[0]
 
-			air_date = episode.xpath('.//div[@class="moreEpisodesAirDate"]/span/text()')[0].replace('Aired: ', '')
-			originally_available_at = Datetime.ParseDate(air_date).date()
+		try:
+			date = url.split('/')[4].split('-')
+			date = '%s %s, %s' % (date[1], date[2], date[3])
+			originally_available_at = Datetime.ParseDate(date).date()
+		except:
+			originally_available_at = None
 
-			oc.add(EpisodeObject(
-				url = url,
-				title = title,
-				summary = summary,
-				thumb = Resource.ContentsOfURLWithFallback(url=thumb),
-				originally_available_at = originally_available_at
-			))
+		oc.add(EpisodeObject(
+			url = url,
+			title = title,
+			summary = summary,
+			thumb = Resource.ContentsOfURLWithFallback(url=thumb),
+			originally_available_at = originally_available_at
+		))
 
-	oc.objects.sort(key=lambda obj: obj.originally_available_at, reverse=True)
 	return oc
 
 ####################################################################################################
