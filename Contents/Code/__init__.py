@@ -17,7 +17,9 @@ def MainMenu():
 
 	oc = ObjectContainer()
 
-	oc.add(DirectoryObject(key=Callback(FullEpisodes), title=L('fullepisodes')))
+	if Client.Platform in ('MacOSX', 'Linux', 'Windows', 'iOS', 'Roku', 'Chrome', 'Firefox', 'Safari'):
+		oc.add(DirectoryObject(key=Callback(FullEpisodes), title=L('fullepisodes')))
+
 	oc.add(DirectoryObject(key=Callback(ParseSearchResults, title2=L('guests'), tags='interviews'), title=L('guests')))
 	oc.add(DirectoryObject(key=Callback(CorrespondentBrowser), title=L('correspondents')))
 	oc.add(DirectoryObject(key=Callback(ParseSearchResults, title2=L('allvideos')), title=L('allvideos')))
