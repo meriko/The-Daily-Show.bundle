@@ -107,10 +107,9 @@ def GetCorrespondentBio(correspondent):
 
 ####################################################################################################
 @route('/video/thedailyshow/search', page=int, allow_sync=True)
-def ParseSearchResults(title2, tags=None, page=1):
+def ParseSearchResults(title2, tags='', page=1):
 
 	oc = ObjectContainer(title2=title2)
-	if not tags: tags = ''
 	url = TDS_SEARCH % (String.Quote(tags), page)
 	html = HTML.ElementFromURL(url, cacheTime=CACHE_1HOUR)
 
