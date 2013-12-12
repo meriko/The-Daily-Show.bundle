@@ -128,12 +128,11 @@ def ParseSearchResults(title2, tags=None, page=1):
 		air_date = result.xpath('.//div[@class="info_holder"]//span[contains(., "Aired:")]/following-sibling::text()')[0]
 		originally_available_at = Datetime.ParseDate(air_date).date()
 
-		summary = None
-		duration = None
-
 		if summary[-7:-6] == '(':
 			(summary, duration) = summary.rsplit(' (', 1)
 			duration = Datetime.MillisecondsFromString(duration.strip(')'))
+		else:
+			duration = None
 
 		oc.add(VideoClipObject(
 			url = url,
