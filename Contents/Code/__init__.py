@@ -17,7 +17,7 @@ def MainMenu():
 
 	oc = ObjectContainer()
 
-	if Client.Platform in ('MacOSX', 'Linux', 'Windows', 'iOS', 'Roku', 'LGTV', 'Samsung', 'Chrome', 'Firefox', 'Safari', 'Plex Home Theater'):
+	if Client.Platform in ('MacOSX', 'Linux', 'Windows', 'Windows Phone', 'iOS', 'Roku', 'LGTV', 'Samsung', 'Chrome', 'Firefox', 'Safari', 'Plex Home Theater'):
 		oc.add(DirectoryObject(key=Callback(FullEpisodes), title=L('fullepisodes')))
 
 	oc.add(DirectoryObject(key=Callback(ParseSearchResults, title2=L('guests'), tags='interviews'), title=L('guests')))
