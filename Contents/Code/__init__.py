@@ -9,7 +9,7 @@ def Start():
 
 	ObjectContainer.title1 = NAME
 	HTTP.CacheTime = CACHE_1HOUR
-	HTTP.Headers['User-Agent'] = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10.8; rv:18.0) Gecko/20100101 Firefox/18.0'
+	HTTP.Headers['User-Agent'] = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_8_5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/32.0.1700.107 Safari/537.36'
 
 ####################################################################################################
 @handler('/video/thedailyshow', NAME)
@@ -17,7 +17,7 @@ def MainMenu():
 
 	oc = ObjectContainer()
 
-	if Client.Platform in ('MacOSX', 'Linux', 'Windows', 'Windows Phone', 'iOS', 'Roku', 'LGTV', 'Samsung', 'Chrome', 'Firefox', 'Safari', 'Plex Home Theater'):
+	if Client.Platform not in ('Android'):
 		oc.add(DirectoryObject(key=Callback(FullEpisodes), title=L('fullepisodes')))
 
 	oc.add(DirectoryObject(key=Callback(ParseSearchResults, title2=L('guests'), tags='interviews'), title=L('guests')))
