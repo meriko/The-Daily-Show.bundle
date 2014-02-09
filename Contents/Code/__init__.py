@@ -17,7 +17,7 @@ def MainMenu():
 
 	oc = ObjectContainer()
 
-	if Client.Platform not in ('Android'):
+	if Client.Platform and Client.Platform not in ('Android'):
 		oc.add(DirectoryObject(key=Callback(FullEpisodes), title=L('fullepisodes')))
 
 	oc.add(DirectoryObject(key=Callback(ParseSearchResults, title2=L('guests'), tags='interviews'), title=L('guests')))
