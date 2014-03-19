@@ -1,15 +1,21 @@
 NAME = 'The Daily Show'
-TDS_URL = 'http://www.thedailyshow.com'
-TDS_FULL_EPISODES = 'http://www.thedailyshow.com/full-episodes'
-TDS_CORRESPONDENTS = 'http://www.thedailyshow.com/news-team'
-TDS_SEARCH = 'http://www.thedailyshow.com/feeds/search?keywords=&tags=%s&sortOrder=desc&sortBy=date&page=%d'
+TDS_URL = 'http://thedailyshow.cc.com'
+
+EPISODES_URL = 'http://thedailyshow.cc.com/full-episodes'
+EPISODES_FEED = '%s/feeds/f1010/1.0/a77b2fb1-bb8e-498d-bca1-6fca29d44e62/2796e828-ecfd-11e0-aca6-0026b9414f30/%%s' % TDS_URL
+#                                   ^^^ section/videotype id(?)          ^^^ show id                          ^^^ most recent episode id
+
+NEWSTEAM_MEMBERS = '%s/feeds/f1060/1.0/93a0d300-98ac-4a75-9d4f-09577c87cfc4' % TDS_URL
+NEWSTEAM_MEMBER_CLIPS = '%s/feeds/f1054/1.0/e33d9f3c-aa11-43cb-8186-93ff42490331/%%s/%%d' % TDS_URL
+
+TDS_SEARCH = '%s/feeds/f1030/1.0?keywords=&tags=%%s&sortBy=date&startingIndex=%%d' % TDS_URL
 
 ####################################################################################################
 def Start():
 
 	ObjectContainer.title1 = NAME
 	HTTP.CacheTime = CACHE_1HOUR
-	HTTP.Headers['User-Agent'] = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_8_5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/32.0.1700.107 Safari/537.36'
+	HTTP.Headers['User-Agent'] = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_8_5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/33.0.1750.152 Safari/537.36'
 
 ####################################################################################################
 @handler('/video/thedailyshow', NAME)
@@ -21,7 +27,7 @@ def MainMenu():
 		oc.add(DirectoryObject(key=Callback(FullEpisodes), title=L('fullepisodes')))
 
 	oc.add(DirectoryObject(key=Callback(ParseSearchResults, title2=L('guests'), tags='interviews'), title=L('guests')))
-	oc.add(DirectoryObject(key=Callback(CorrespondentBrowser), title=L('correspondents')))
+	oc.add(DirectoryObject(key=Callback(NewsTeam), title=L('correspondents')))
 	oc.add(DirectoryObject(key=Callback(ParseSearchResults, title2=L('allvideos')), title=L('allvideos')))
 	oc.add(SearchDirectoryObject(identifier='com.plexapp.plugins.thedailyshow', title=L('search'), prompt=L('searchprompt'), term=L('videos')))
 
@@ -32,117 +38,104 @@ def MainMenu():
 def FullEpisodes():
 
 	oc = ObjectContainer(title2=L('fullepisodes'))
-	html = HTML.ElementFromURL(TDS_FULL_EPISODES)
 
-	for episode in html.xpath('//ul[@class="more_episode_list"]/li'):
-		url = episode.xpath('./a/@href')[0]
-		guest = episode.xpath('.//span[@class="guest"]/text()')[0].strip(' -')
+	html = HTML.ElementFromURL(EPISODES_URL)
+	episode_id = html.xpath('//div[@id="video_player"]/@data-mgid')[0].split(':')[-1]
 
-		airdate = episode.xpath('.//span[contains(@class, "air_date")]/text()')[0].replace('  ', ' ').strip()
-		if airdate.lower() == 'special edition':
-			title = 'Special Edition - %s' % guest
-		else:
-			title = '%s - %s' % (airdate, guest)
+	json_obj = JSON.ObjectFromURL(EPISODES_FEED % episode_id)
 
-		summary = episode.xpath('.//span[@class="details"]/span/text()')[0].strip()
-		thumb = '%s?width=640&height=360' % episode.xpath('.//img/@src')[0].split('?')[0]
+	for result in json_obj['result']['episodes']:
 
-		try:
-			date = url.split('/')[4].split('-')
-			date = '%s %s, %s' % (date[1], date[2], date[3])
-			originally_available_at = Datetime.ParseDate(date).date()
-		except:
-			originally_available_at = None
+		if result['type'] != 'episode':
+			continue
 
 		oc.add(EpisodeObject(
-			url = url,
-			title = title,
-			summary = summary,
-			thumb = Resource.ContentsOfURLWithFallback(url=thumb),
-			originally_available_at = originally_available_at
+			url = result['canonicalURL'].replace('/episodes/', '/full-episodes/'),
+			title = result['title'],
+			summary = result['description'] if result['description'] != '' else result['shortDescription'],
+			duration = int(float(result['duration']))*1000,
+			thumb = Resource.ContentsOfURLWithFallback(url=result['images'][0]['url'] if len(result['images']) > 0 else ''),
+			originally_available_at = Datetime.FromTimestamp(int(result['publishDate']))
 		))
 
 	return oc
 
 ####################################################################################################
-@route('/video/thedailyshow/correspondents')
-def CorrespondentBrowser():
+@route('/video/thedailyshow/newsteam')
+def NewsTeam():
 
 	oc = ObjectContainer(title2=L('correspondents'))
 
-	for correspondent in HTML.ElementFromURL(TDS_CORRESPONDENTS).xpath('//div[@class="team-details"]/a'):
-		item = GetCorrespondentBio(correspondent)
-		oc.add(item)
+	json_obj = JSON.ObjectFromURL(NEWSTEAM_MEMBERS)
+
+	for member in json_obj['result']['promo']['relatedItems']:
+
+		name = member['promotedItem']['name']
+		member_id = member['promotedItem']['id']
+		thumb = member['promotedItem']['images'][0]['url']
+
+		oc.add(DirectoryObject(
+			key = Callback(NewsTeamMember, name=name, member_id=member_id),
+			title = name,
+			thumb = Resource.ContentsOfURLWithFallback(url=thumb)
+		))
 
 	return oc
 
 ####################################################################################################
-def GetCorrespondentBio(correspondent):
+@route('/video/thedailyshow/newsteam/{member_id}/{page}', page=int, allow_sync=True)
+def NewsTeamMember(name, member_id, page=1):
 
-	name = correspondent.xpath('./span/text()')[0].replace('_', ' ')
-	url = correspondent.get('href')
+	oc = ObjectContainer(title2=name)
 
-	if not url.startswith('http://'):
-		url = TDS_URL + url
+	json_obj = JSON.ObjectFromURL(NEWSTEAM_MEMBER_CLIPS % (member_id, page))
 
-	summary = ''
-	thumb = ''
+	for result in json_obj['result']['videos']:
 
-	# Try to fetch their details
-	try:
-		info = HTML.ElementFromURL(url, cacheTime=CACHE_1MONTH)
-		biography = info.xpath('//div[@class="textHolder"]')[0].text_content()
-		summary = biography.split('Biography:',1)[1].strip()
+		if result['type'] != 'video':
+			continue
 
-		thumb = info.xpath('//div[@class="middle"]/div[@class="imageHolder"]/img/@src')[0].split('?')[0]
-	except:
-		pass
+		oc.add(VideoClipObject(
+			url = result['canonicalURL'],
+			title = result['title'],
+			summary = result['description'] if result['description'] != '' else result['shortDescription'],
+			duration = int(float(result['duration']))*1000,
+			thumb = Resource.ContentsOfURLWithFallback(url=result['images'][0]['url'] if len(result['images']) > 0 else ''),
+			originally_available_at = Datetime.FromTimestamp(int(result['publishDate']))
+		))
 
-	return DirectoryObject(
-		key = Callback(ParseSearchResults, title2=name, tags=name),
-		title = name,
-		summary = summary,
-		thumb = Resource.ContentsOfURLWithFallback(url=thumb)
-	)
+	if 'nextPageURL' in json_obj['result'] and json_obj['result']['nextPageURL'] != '':
+		oc.add(NextPageObject(
+			key = Callback(NewsTeamMember, name=name, member_id=member_id, page=page+1),
+			title = L('more')
+		))
+
+	return oc
 
 ####################################################################################################
 @route('/video/thedailyshow/search', page=int, allow_sync=True)
-def ParseSearchResults(title2, tags='', page=1):
+def ParseSearchResults(title2, tags='', page=0):
 
 	oc = ObjectContainer(title2=title2)
-	url = TDS_SEARCH % (String.Quote(tags), page)
-	html = HTML.ElementFromURL(url, cacheTime=CACHE_1HOUR)
+	url = TDS_SEARCH % (String.Quote(tags), page*25)
 
-	for result in html.xpath('//div[@class="search-results"]/div[@class="entry"]'):
-		url = result.xpath('.//span[@class="title"]/a/@href')[0]
-		title = result.xpath('.//span[@class="title"]/a/text()')[0]
-		summary = result.xpath('.//span[@class="description"]/text()')[0]
+	json_obj = JSON.ObjectFromURL(url, cacheTime=CACHE_1HOUR)
 
-		try:
-			thumb = result.xpath('.//img/@src')[0].split('?')[0]
-			thumb = '%s?width=640' % thumb
-		except:
-			thumb = ''
+	for result in json_obj['result']['results']:
 
-		air_date = result.xpath('.//div[@class="info_holder"]//span[contains(., "Aired:")]/following-sibling::text()')[0]
-		originally_available_at = Datetime.ParseDate(air_date).date()
-
-		if summary[-7:-6] == '(':
-			(summary, duration) = summary.rsplit(' (', 1)
-			duration = Datetime.MillisecondsFromString(duration.strip(')'))
-		else:
-			duration = None
+		if result['type'] != 'video':
+			continue
 
 		oc.add(VideoClipObject(
-			url = url,
-			title = title,
-			summary = summary,
-			duration = duration,
-			thumb = Resource.ContentsOfURLWithFallback(url=thumb),
-			originally_available_at = originally_available_at
+			url = result['canonicalURL'],
+			title = result['title'],
+			summary = result['description'],
+			duration = int(float(result['duration']))*1000,
+			thumb = Resource.ContentsOfURLWithFallback(url=result['images'][0]['url']),
+			originally_available_at = Datetime.FromTimestamp(int(result['publishDate']))
 		))
 
-	if len(html.xpath('//a[@class="search-next"]')) > 0:
+	if 'nextPageURL' in json_obj['result'] and json_obj['result']['nextPageURL'] != '':
 		oc.add(NextPageObject(
 			key = Callback(ParseSearchResults, title2=title2, tags=tags, page=page+1),
 			title = L('more')

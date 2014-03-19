@@ -1,39 +1,24 @@
-TDS_SEARCH = 'http://www.thedailyshow.com/feeds/search?keywords=%s&tags=&sortOrder=desc&sortBy=date&page=1'
+TDS_SEARCH = 'http://thedailyshow.cc.com/feeds/f1030/1.0?keywords=%s&tags=&sortBy=date'
 
 ####################################################################################################
 def Search(query):
 
 	oc = ObjectContainer(title1='The Daily Show', title2='Search Results')
 	url = TDS_SEARCH % String.Quote(query)
-	html = HTML.ElementFromURL(url, cacheTime=CACHE_1HOUR)
+	json_obj = JSON.ObjectFromURL(url, cacheTime=CACHE_1HOUR)
 
-	for result in html.xpath('//div[@class="search-results"]/div[@class="entry"]'):
-		url = result.xpath('.//span[@class="title"]/a/@href')[0]
-		title = result.xpath('.//span[@class="title"]/a/text()')[0]
-		summary = result.xpath('.//span[@class="description"]/text()')[0]
+	for result in json_obj['result']['results']:
 
-		try:
-			thumb = result.xpath('.//img/@src')[0].split('?')[0]
-			thumb = '%s?width=640' % thumb
-		except:
-			thumb = ''
-
-		air_date = result.xpath('.//div[@class="info_holder"]//span[contains(., "Aired:")]/following-sibling::text()')[0]
-		originally_available_at = Datetime.ParseDate(air_date).date()
-
-		if summary[-7:-6] == '(':
-			(summary, duration) = summary.rsplit(' (', 1)
-			duration = Datetime.MillisecondsFromString(duration.strip(')'))
-		else:
-			duration = None
+		if result['type'] != 'video':
+			continue
 
 		oc.add(VideoClipObject(
-			url = url,
-			title = title,
-			summary = summary,
-			duration = duration,
-			thumb = Resource.ContentsOfURLWithFallback(url=thumb),
-			originally_available_at = originally_available_at
+			url = result['canonicalURL'],
+			title = result['title'],
+			summary = result['description'],
+			duration = int(float(result['duration']))*1000,
+			thumb = Resource.ContentsOfURLWithFallback(url=result['images'][0]['url']),
+			originally_available_at = Datetime.FromTimestamp(int(result['publishDate']))
 		))
 
 	return oc
