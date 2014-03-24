@@ -3,7 +3,6 @@ TDS_URL = 'http://thedailyshow.cc.com'
 
 EPISODES_URL = 'http://thedailyshow.cc.com/full-episodes'
 EPISODES_FEED = '%s/feeds/f1010/1.0/a77b2fb1-bb8e-498d-bca1-6fca29d44e62/2796e828-ecfd-11e0-aca6-0026b9414f30/%%s' % TDS_URL
-#                                   ^^^ section/videotype id(?)          ^^^ show id                          ^^^ most recent episode id
 
 NEWSTEAM_MEMBERS = '%s/feeds/f1060/1.0/93a0d300-98ac-4a75-9d4f-09577c87cfc4' % TDS_URL
 NEWSTEAM_MEMBER_CLIPS = '%s/feeds/f1054/1.0/e33d9f3c-aa11-43cb-8186-93ff42490331/%%s/%%d' % TDS_URL
