@@ -2,7 +2,7 @@ NAME = 'The Daily Show'
 TDS_URL = 'http://thedailyshow.cc.com'
 
 EPISODES_URL = 'http://thedailyshow.cc.com/full-episodes'
-EPISODES_FEED = '%s/feeds/f1010/1.0/a77b2fb1-bb8e-498d-bca1-6fca29d44e62/2796e828-ecfd-11e0-aca6-0026b9414f30/%%s' % TDS_URL
+EPISODES_FEED = '%s/feeds/f1010/1.0/a77b2fb1-bb8e-498d-bca1-6fca29d44e62/2796e828-ecfd-11e0-aca6-0026b9414f30/1' % TDS_URL
 
 NEWSTEAM_MEMBERS = '%s/feeds/f1060/1.0/93a0d300-98ac-4a75-9d4f-09577c87cfc4' % TDS_URL
 NEWSTEAM_MEMBER_CLIPS = '%s/feeds/f1054/1.0/e33d9f3c-aa11-43cb-8186-93ff42490331/%%s/%%d' % TDS_URL
@@ -37,11 +37,7 @@ def MainMenu():
 def FullEpisodes():
 
 	oc = ObjectContainer(title2=L('fullepisodes'))
-
-	html = HTML.ElementFromURL(EPISODES_URL)
-	episode_id = html.xpath('//div[@id="video_player"]/@data-mgid')[0].split(':')[-1]
-
-	json_obj = JSON.ObjectFromURL(EPISODES_FEED % episode_id)
+	json_obj = JSON.ObjectFromURL(EPISODES_FEED)
 
 	for result in json_obj['result']['episodes']:
 
