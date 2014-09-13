@@ -114,7 +114,7 @@ def ParseSearchResults(title2, tags='', page=0):
 	oc = ObjectContainer(title2=title2)
 	url = TDS_SEARCH % (String.Quote(tags), page*25)
 
-	json_obj = JSON.ObjectFromURL(url, cacheTime=CACHE_1HOUR)
+	json_obj = JSON.ObjectFromURL(url)
 
 	for result in json_obj['result']['results']:
 

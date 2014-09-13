@@ -5,7 +5,7 @@ def Search(query):
 
 	oc = ObjectContainer(title1='The Daily Show', title2='Search Results')
 	url = TDS_SEARCH % String.Quote(query)
-	json_obj = JSON.ObjectFromURL(url, cacheTime=CACHE_1HOUR)
+	json_obj = JSON.ObjectFromURL(url)
 
 	for result in json_obj['result']['results']:
 
